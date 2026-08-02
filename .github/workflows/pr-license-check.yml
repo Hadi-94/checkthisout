@@ -1,0 +1,85 @@
+name: License Check
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - package.json
+      - package-lock.json
+      - vendor/**
+      - devsec-analysis/d3-license-classification-checks/check-licenses.js
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      prohibited: ${{ steps.result.outputs.prohibited }}
+      review: ${{ steps.result.outputs.review }}
+      review_packages: ${{ steps.result.outputs.review_packages }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run license check
+        id: check
+        continue-on-error: true
+        run: node devsec-analysis/d3-license-classification-checks/check-licenses.js
+
+      - name: Read license result
+        id: result
+        shell: bash
+        run: |
+          node - <<'NODE' >> "$GITHUB_OUTPUT"
+          const result = require("./license-check-result.json");
+          console.log(`prohibited=${result.prohibited.length > 0}`);
+          console.log(`review=${result.review.length > 0}`);
+          console.log(`review_packages=${result.review.map(x => x.name).join(", ")}`);
+          NODE
+
+  review:
+    needs: scan
+    if: needs.scan.outputs.review == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Add review label and comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const packages = `${{ needs.scan.outputs.review_packages }}`;
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ["license-review-needed"]
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `License review is required for: ${packages}`
+            });
+
+  gate:
+    needs: scan
+    if: needs.scan.outputs.prohibited == 'true'
+    runs-on: ubuntu-latest
+    permissions: {}
+
+    steps:
+      - run: |
+          echo "A prohibited license was detected."
+          exit 1

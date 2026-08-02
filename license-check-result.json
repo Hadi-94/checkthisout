@@ -1,0 +1,34 @@
+{
+  "prohibited": [
+    {
+      "name": "convo-insights",
+      "version": "0.7.1",
+      "licence": "AGPL-3.0-only",
+      "result": "PROHIBITED",
+      "reason": "Copyleft or source-available licence"
+    }
+  ],
+  "review": [
+    {
+      "name": "joi",
+      "version": "18.2.3",
+      "licence": "BSD-3-Clause",
+      "result": "REVIEW",
+      "reason": "Manual policy review required"
+    },
+    {
+      "name": "jszip",
+      "version": "3.10.1",
+      "licence": "(MIT OR GPL-3.0-or-later)",
+      "result": "REVIEW",
+      "reason": "Dual or compound licence"
+    },
+    {
+      "name": "msgfmt-lite",
+      "version": "1.3.0",
+      "licence": "MIT",
+      "result": "REVIEW",
+      "reason": "Restrictive terms in licence text"
+    }
+  ]
+}

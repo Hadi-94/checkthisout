@@ -2,8 +2,9 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    branches: [master, devsec-assessment]
   pull_request:
+        branches: [master,devsec-assessment]
 
 permissions: write-all
 

@@ -1,0 +1,676 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Convo Hub API - Burp Suite Scan Definition",
+    "version": "1.4.2",
+    "description": "Self-contained API definition for authorized security testing with Burp Suite Professional. Use only against a disposable local or test environment: several operations create data, write files, close conversations, or trigger outbound webhook requests. Configure a valid bearer token in Burp for protected endpoints."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local development instance"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    { "name": "Health" },
+    { "name": "Authentication" },
+    { "name": "Contacts" },
+    { "name": "Conversations" },
+    { "name": "Messages" },
+    { "name": "Media" },
+    { "name": "Webhooks" },
+    { "name": "Reports" }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["Health"],
+        "operationId": "getHealth",
+        "summary": "Get service health",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Service health information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "tags": ["Health"],
+        "operationId": "getReadiness",
+        "summary": "Get service readiness",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Service is ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "ready" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/token": {
+      "post": {
+        "tags": ["Authentication"],
+        "operationId": "createAccessToken",
+        "summary": "Create a bearer access token",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "maxLength": 200,
+                    "example": "security-tester@example.invalid"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password",
+                    "minLength": 8,
+                    "maxLength": 200,
+                    "example": "replace-with-test-password"
+                  }
+                }
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "format": "password" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Access token issued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "access_token": { "type": "string" },
+                    "token_type": { "type": "string", "example": "Bearer" },
+                    "expires_in": { "type": "integer", "example": 3600 }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/v1/contacts": {
+      "get": {
+        "tags": ["Contacts"],
+        "operationId": "listContacts",
+        "summary": "List workspace contacts",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "maximum": 200, "default": 50 },
+            "example": 50
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 0, "maximum": 100000, "default": 0 },
+            "example": 0
+          }
+        ],
+        "responses": {
+          "200": { "description": "Paginated contact list" },
+          "401": { "description": "Missing or invalid access token" }
+        }
+      },
+      "post": {
+        "tags": ["Contacts"],
+        "operationId": "createContact",
+        "summary": "Create a contact",
+        "description": "State-changing operation: creates a contact in the authenticated workspace.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ContactCreate" },
+              "example": {
+                "name": "Burp Test Contact",
+                "phone": "+60123456789",
+                "email": "burp-contact@example.invalid",
+                "channel": "whatsapp",
+                "tags": ["security-test"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Contact created" },
+          "400": { "description": "Request validation failed" },
+          "401": { "description": "Missing or invalid access token" }
+        }
+      }
+    },
+    "/v1/contacts/search": {
+      "get": {
+        "tags": ["Contacts"],
+        "operationId": "searchContacts",
+        "summary": "Search contacts by name",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "example": "Aisyah"
+          },
+          {
+            "name": "workspaceId",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "integer" },
+            "example": 4417
+          }
+        ],
+        "responses": {
+          "200": { "description": "Matching contacts" },
+          "401": { "description": "Missing or invalid access token" }
+        }
+      }
+    },
+    "/v1/contacts/tag-summary": {
+      "get": {
+        "tags": ["Contacts"],
+        "operationId": "getContactTagSummary",
+        "summary": "Get contact tag frequencies",
+        "responses": {
+          "200": { "description": "Tag frequency summary" },
+          "401": { "description": "Missing or invalid access token" }
+        }
+      }
+    },
+    "/v1/contacts/{id}/custom-fields": {
+      "patch": {
+        "tags": ["Contacts"],
+        "operationId": "patchContactCustomFields",
+        "summary": "Patch contact custom fields",
+        "description": "State-changing operation: updates custom fields on an existing contact.",
+        "parameters": [
+          { "$ref": "#/components/parameters/ContactId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["paths", "values"],
+                "properties": {
+                  "paths": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": { "type": "string" },
+                    "example": ["crm.stage"]
+                  },
+                  "values": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {},
+                    "example": ["qualified"]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Custom fields updated" },
+          "400": { "description": "Paths and values mismatch" },
+          "404": { "description": "Contact not found" }
+        }
+      }
+    },
+    "/v1/conversations": {
+      "get": {
+        "tags": ["Conversations"],
+        "operationId": "listConversations",
+        "summary": "List workspace conversations",
+        "parameters": [
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["created_at", "updated_at", "last_message_at", "subject"],
+              "default": "last_message_at"
+            },
+            "example": "last_message_at"
+          },
+          {
+            "name": "dir",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" },
+            "example": "desc"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "example": "new"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "maximum": 200, "default": 50 },
+            "example": 50
+          }
+        ],
+        "responses": {
+          "200": { "description": "Conversation list" },
+          "401": { "description": "Missing or invalid access token" }
+        }
+      }
+    },
+    "/v1/conversations/{id}": {
+      "get": {
+        "tags": ["Conversations"],
+        "operationId": "getConversation",
+        "summary": "Get a conversation",
+        "parameters": [
+          { "$ref": "#/components/parameters/ConversationId" }
+        ],
+        "responses": {
+          "200": { "description": "Conversation details" },
+          "404": { "description": "Conversation not found" }
+        }
+      }
+    },
+    "/v1/conversations/{id}/close": {
+      "post": {
+        "tags": ["Conversations"],
+        "operationId": "closeConversation",
+        "summary": "Close a conversation",
+        "description": "State-changing operation: closes an existing conversation.",
+        "parameters": [
+          { "$ref": "#/components/parameters/ConversationId" }
+        ],
+        "responses": {
+          "200": { "description": "Conversation closed" },
+          "409": { "description": "Conversation was not open or was not found" }
+        }
+      }
+    },
+    "/v1/messages": {
+      "get": {
+        "tags": ["Messages"],
+        "operationId": "listMessages",
+        "summary": "List conversation messages",
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "uuid" },
+            "example": "00000000-0000-4000-8000-000000000001"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "maximum": 200, "default": 50 },
+            "example": 50
+          }
+        ],
+        "responses": {
+          "200": { "description": "Message list" },
+          "401": { "description": "Missing or invalid access token" }
+        }
+      },
+      "post": {
+        "tags": ["Messages"],
+        "operationId": "queueOutboundMessage",
+        "summary": "Queue an outbound templated message",
+        "description": "State-changing operation: creates an outbound message for an existing conversation.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/OutboundMessage" },
+              "example": {
+                "conversation_id": "00000000-0000-4000-8000-000000000001",
+                "channel": "whatsapp",
+                "template": "Hello {{name}}",
+                "variables": { "campaign": "burp-test" }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": { "description": "Message queued" },
+          "400": { "description": "Request validation failed" },
+          "404": { "description": "Conversation not found" }
+        }
+      }
+    },
+    "/v1/messages/template/preview": {
+      "post": {
+        "tags": ["Messages"],
+        "operationId": "previewMessageTemplate",
+        "summary": "Preview a message template",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["template"],
+                "properties": {
+                  "template": {
+                    "type": "string",
+                    "maxLength": 2000,
+                    "example": "Hello {{name}} from {{channel}}"
+                  },
+                  "variables": {
+                    "type": "object",
+                    "additionalProperties": { "type": "string" },
+                    "example": { "campaign": "burp-test" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Rendered template preview" },
+          "400": { "description": "Template rendering failed" }
+        }
+      }
+    },
+    "/v1/media": {
+      "post": {
+        "tags": ["Media"],
+        "operationId": "uploadMedia",
+        "summary": "Upload a binary media blob",
+        "description": "State-changing operation: writes a media blob to local disk.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "minLength": 1,
+                "maxLength": 8388608
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Media blob stored" },
+          "400": { "description": "Request body was empty" },
+          "413": { "description": "Request body exceeded the upload limit" }
+        }
+      }
+    },
+    "/v1/media/{id}": {
+      "get": {
+        "tags": ["Media"],
+        "operationId": "getMedia",
+        "summary": "Fetch a binary media blob",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{16}$"
+            },
+            "example": "0123456789abcdef"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Media blob",
+            "content": {
+              "application/octet-stream": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          },
+          "400": { "description": "Invalid blob ID" },
+          "404": { "description": "Blob not found" }
+        }
+      }
+    },
+    "/v1/webhooks": {
+      "get": {
+        "tags": ["Webhooks"],
+        "operationId": "listWebhooks",
+        "summary": "List registered webhook receivers",
+        "responses": {
+          "200": { "description": "Webhook receiver list" },
+          "401": { "description": "Missing or invalid access token" }
+        }
+      },
+      "post": {
+        "tags": ["Webhooks"],
+        "operationId": "registerWebhook",
+        "summary": "Register a webhook receiver",
+        "description": "State-changing operation: registers a webhook receiver. The safe default example uses the reserved .invalid domain.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/WebhookCreate" },
+              "example": {
+                "url": "https://burp-test.example.invalid/webhook",
+                "events": ["message.created", "conversation.closed"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Webhook receiver registered" },
+          "400": { "description": "Request validation failed" }
+        }
+      }
+    },
+    "/v1/webhooks/test-delivery": {
+      "post": {
+        "tags": ["Webhooks"],
+        "operationId": "testWebhookDelivery",
+        "summary": "Send a sample event to a webhook receiver",
+        "description": "Outbound-request operation. Use only a controlled test listener or Burp Collaborator URL. The safe default example uses the reserved .invalid domain.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["url"],
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "format": "uri",
+                    "example": "https://burp-test.example.invalid/receiver"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Delivery attempt completed" },
+          "400": { "description": "URL is required" },
+          "500": { "description": "Outbound request failed" }
+        }
+      }
+    },
+    "/v1/reports/funnel": {
+      "get": {
+        "tags": ["Reports"],
+        "operationId": "getFunnelReport",
+        "summary": "Get the 30-day conversation funnel",
+        "responses": {
+          "200": { "description": "Funnel report" },
+          "401": { "description": "Missing or invalid access token" }
+        }
+      }
+    },
+    "/v1/reports/response-times": {
+      "get": {
+        "tags": ["Reports"],
+        "operationId": "getResponseTimeReport",
+        "summary": "Get the response-time histogram",
+        "responses": {
+          "200": { "description": "Response-time histogram" },
+          "401": { "description": "Missing or invalid access token" }
+        }
+      }
+    },
+    "/v1/reports/export.zip": {
+      "get": {
+        "tags": ["Reports"],
+        "operationId": "exportConversationReport",
+        "summary": "Export workspace conversations as a ZIP archive",
+        "description": "Requires an access token whose role claim is admin or owner.",
+        "responses": {
+          "200": {
+            "description": "ZIP archive containing the conversation export",
+            "headers": {
+              "Content-Disposition": {
+                "schema": { "type": "string" },
+                "example": "attachment; filename=\"conversations-export.zip\""
+              }
+            },
+            "content": {
+              "application/zip": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          },
+          "401": { "description": "Missing or invalid access token" },
+          "403": { "description": "The authenticated user lacks the required role" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Supply a short-lived access token from POST /v1/auth/token. Do not store real tokens in this file."
+      }
+    },
+    "parameters": {
+      "ContactId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "Existing contact UUID from the authenticated workspace",
+        "schema": { "type": "string", "format": "uuid" },
+        "example": "00000000-0000-4000-8000-000000000001"
+      },
+      "ConversationId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "Existing conversation UUID from the authenticated workspace",
+        "schema": { "type": "string", "format": "uuid" },
+        "example": "00000000-0000-4000-8000-000000000001"
+      }
+    },
+    "schemas": {
+      "ContactCreate": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "phone": { "type": "string", "nullable": true, "maxLength": 20 },
+          "email": { "type": "string", "format": "email", "nullable": true, "maxLength": 200 },
+          "channel": { "$ref": "#/components/schemas/Channel" },
+          "tags": {
+            "type": "array",
+            "maxItems": 25,
+            "items": { "type": "string", "maxLength": 40 },
+            "default": []
+          }
+        }
+      },
+      "OutboundMessage": {
+        "type": "object",
+        "required": ["conversation_id", "channel", "template"],
+        "properties": {
+          "conversation_id": { "type": "string", "format": "uuid" },
+          "channel": { "$ref": "#/components/schemas/Channel" },
+          "template": { "type": "string", "maxLength": 2000 },
+          "variables": {
+            "type": "object",
+            "additionalProperties": { "type": "string", "maxLength": 500 },
+            "default": {}
+          }
+        }
+      },
+      "WebhookCreate": {
+        "type": "object",
+        "required": ["url", "events"],
+        "properties": {
+          "url": { "type": "string", "format": "uri", "maxLength": 400 },
+          "events": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20,
+            "items": { "type": "string", "maxLength": 60 }
+          }
+        }
+      },
+      "Channel": {
+        "type": "string",
+        "enum": ["whatsapp", "telegram", "facebook", "sms", "email"],
+        "default": "whatsapp"
+      }
+    }
+  }
+}
