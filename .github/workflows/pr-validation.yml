@@ -3,25 +3,17 @@ name: pr-validation
 # Runs the suite against incoming pull requests, including those from forks, and
 # reports the result back on the PR so reviewers do not have to open the run.
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened]
 
 permissions:
-  contents: write
-  pull-requests: write
-  statuses: write
+  contents: read
 
 jobs:
   validate:
     runs-on: ubuntu-latest
-    env:
-      JWT_SECRET: ${{ secrets.CI_JWT_SECRET }}
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-
       - uses: actions/setup-node@v3
         with:
           node-version: '20'
@@ -39,13 +31,6 @@ jobs:
           echo "Title: ${{ github.event.pull_request.title }}" >> "$GITHUB_STEP_SUMMARY"
           echo "Branch: ${{ github.event.pull_request.head.ref }}" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Comment on the pull request
-        uses: actions/github-script@v6
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: 'pr-validation passed for `${{ github.event.pull_request.head.ref }}`',
-            })
+      - name: Write run summary
+        run: |
+          ...
