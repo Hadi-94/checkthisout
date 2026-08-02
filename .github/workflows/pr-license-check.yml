@@ -2,7 +2,7 @@ name: License Check
 
 on:
   pull_request:
-    branches: [master]
+    branches: [master, devsec-assessment]
     paths:
       - package.json
       - package-lock.json
