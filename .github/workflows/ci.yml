@@ -31,6 +31,23 @@ jobs:
       - name: Run tests
         run: npm test
 
+## This is the stage that I have added to integrate and onboard this project to SonarQube-SAST Scanner.
+## In standard procedure, any new PR approved to merge with development should be scanned.
+## This is to make sure that all security-related issues reported are being patched and handled at the development stage, as part of Secure SDLC. 
+  SonarQube-SAST:
+    sonarqube:
+      name: SonarQube-SAST
+      needs: build-test
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+          with:
+            fetch-depth: 0 
+        - name: SonarQube Scan
+          uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995
+          env:
+            SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
   image:
     needs: build-test
     runs-on: ubuntu-latest
@@ -46,3 +63,4 @@ jobs:
           push: false
           load: true
           tags: convo-hub-api:${{ github.sha }}
+  
