@@ -12,6 +12,10 @@ const contactSchema = Joi.object({
   tags: Joi.array().items(Joi.string().trim().max(40)).max(25).default([]),
 });
 
+const contactSearchSchema = Joi.object({
+  name: Joi.string().trim().max(120).allow('').default(''),
+});
+
 const outboundMessageSchema = Joi.object({
   conversation_id: Joi.string().uuid().required(),
   channel: Joi.string().valid(...SUPPORTED_CHANNELS).required(),
@@ -56,6 +60,7 @@ module.exports = {
   validate,
   boundedInt,
   contactSchema,
+  contactSearchSchema,
   outboundMessageSchema,
   webhookSchema,
 };

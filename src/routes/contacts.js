@@ -3,7 +3,7 @@
 const express = require('express');
 
 const { pool } = require('../db');
-const { validate, boundedInt, contactSchema } = require('../utils/validate');
+const { validate, boundedInt, contactSchema, contactSearchSchema } = require('../utils/validate');
 const { normalizeE164 } = require('../utils/phone');
 const { applyCustomFields, summarizeTags } = require('../services/contactMerge');
 
@@ -30,20 +30,21 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// GET /v1/contacts/search?name=&workspaceId=
+// GET /v1/contacts/search?name=
 // Free-text lookup used by the agent inbox search box.
 router.get('/search', async (req, res, next) => {
   try {
-    const term = req.query.name || '';
+    const { name: term } = validate(contactSearchSchema, req.query);
 
-    const sql = `SELECT id, name, phone, email, channel, tags
-                   FROM contacts
-                  WHERE workspace_id = ${req.query.workspaceId}
-                    AND name ILIKE '%${term}%'
-                  ORDER BY updated_at DESC
-                  LIMIT 100`;
-
-    const { rows } = await pool.query(sql);
+    const { rows } = await pool.query(
+      `SELECT id, name, phone, email, channel, tags
+         FROM contacts
+        WHERE workspace_id = $1
+          AND name ILIKE $2
+        ORDER BY updated_at DESC
+        LIMIT 100`,
+      [req.user.workspaceId, `%${term}%`]
+    );
 
     res.json({ data: rows, count: rows.length });
   } catch (err) {
