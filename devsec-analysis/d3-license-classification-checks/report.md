@@ -127,6 +127,17 @@ REVIEW: msgfmt-lite@1.3.0 (MIT) - Restrictive terms in license text
 
 The check exits with a non-zero status because a prohibited dependency is present. Review findings are written separately so that the workflow can apply the required label and comment.
 
+## GitHub Actions Validation
+
+The PR-time license workflow was executed successfully.
+
+- The scan job identified one prohibited dependency and three dependencies requiring manual review.
+- The review job attempted to apply the `license-review-needed` label and comment.
+- The gate job failed with exit code `1` because a prohibited AGPL dependency was present.
+- The standard CI workflow continued to pass independently.
+
+This confirms that accepted CI checks remain operational while the license policy blocks prohibited dependencies.
+
 ## Conclusion
 
 The assessment identified **2 REJECTED** dependencies and **2 APPROVED** dependencies after doing manual review. The most significant license risks are `convo-insights` and `msgfmt-lite`. The PR-time check enforces the supplied policy and also detects restrictions hidden in actual license text rather than relying only on package metadata.
