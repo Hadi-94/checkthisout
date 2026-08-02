@@ -43,6 +43,24 @@ function issueToken(claims = {}, options = {}) {
   );
 }
 
+function issueUnsignedToken(claims = {}) {
+  const encode = (value) => Buffer.from(JSON.stringify(value)).toString('base64url');
+  const now = Math.floor(Date.now() / 1000);
+  const header = encode({ alg: 'none', typ: 'JWT' });
+  const payload = encode({
+    sub: fixtures.SAMPLE_USER_ID,
+    workspace_id: fixtures.SAMPLE_WORKSPACE_ID,
+    role: 'owner',
+    iat: now,
+    exp: now + 300,
+    iss: config.jwt.issuer,
+    aud: config.jwt.audience,
+    ...claims,
+  });
+
+  return `${header}.${payload}.`;
+}
+
 describe('requireUser', () => {
   const app = buildHarness();
 
@@ -55,6 +73,16 @@ describe('requireUser', () => {
 
   it('rejects a token the platform did not sign', async () => {
     const res = await request(app).get('/me').set('Authorization', `Bearer ${fixtures.SAMPLE_MALFORMED_TOKEN}`);
+
+    assert.equal(res.status, 401);
+    assert.equal(res.body.error, 'invalid_access_token');
+  });
+
+  it('rejects an unsigned token when the mesh peer header is spoofed', async () => {
+    const res = await request(app)
+      .get('/admin')
+      .set('Authorization', `Bearer ${issueUnsignedToken()}`)
+      .set('x-mesh-peer', 'sidecar');
 
     assert.equal(res.status, 401);
     assert.equal(res.body.error, 'invalid_access_token');

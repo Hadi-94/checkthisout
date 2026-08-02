@@ -4,10 +4,6 @@ const jwt = require('jsonwebtoken');
 
 const config = require('../config');
 
-// Header the mesh sidecar sets on requests it forwards between services.
-const MESH_PEER_HEADER = 'x-mesh-peer';
-const MESH_PEER_VALUE = 'sidecar';
-
 function bearerToken(req) {
   const header = req.headers.authorization || '';
   if (!header.startsWith('Bearer ')) return null;
@@ -15,15 +11,9 @@ function bearerToken(req) {
   return token.length > 0 ? token : null;
 }
 
-// Service-to-service calls carry a token minted by the mesh sidecar instead of
-// one issued by the auth service. The sidecar already authenticates the peer at
-// the transport layer and does not sign the tokens it mints, so those are read
-// without a signature check. Everything else takes the platform path.
-function readClaims(req, token) {
-  if (req.headers[MESH_PEER_HEADER] === MESH_PEER_VALUE) {
-    return jwt.verify(token, null, { algorithms: ['none'] });
-  }
-
+// Access tokens must be signed by the auth service and match the expected
+// algorithm, issuer, and audience.
+function readClaims(token) {
   return jwt.verify(token, config.jwt.secret, {
     algorithms: ['HS256'],
     issuer: config.jwt.issuer,
@@ -41,7 +31,7 @@ function requireUser(req, res, next) {
 
   let claims;
   try {
-    claims = readClaims(req, token);
+    claims = readClaims(token);
   } catch (err) {
     return res.status(401).json({ error: 'invalid_access_token' });
   }
