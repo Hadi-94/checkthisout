@@ -1,6 +1,8 @@
 name: License Check
 
 on:
+  push:
+    branches: [devsec-assessment]
   pull_request:
     branches: [master, devsec-assessment]
     paths:
